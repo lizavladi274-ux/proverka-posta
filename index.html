@@ -83,6 +83,10 @@
     <div id="verdict"></div>
     <ul id="result"></ul>
     <p class="note">Цифры показывают, во сколько раз чаще или реже такие посты попадали в лучшие в карьерных каналах в 2026 году.</p>
+
+    <!-- УРОК 10: похожие удачные посты -->
+    <h2><span class="num">3</span>Как похожую тему подают удачно</h2>
+    <div id="similar"><p class="note">Проверьте пост, и здесь появятся три похожих удачных поста.</p></div>
   </section>
 
   <!-- Вкладка 2: заполним в уроке 9 -->
@@ -232,25 +236,67 @@
         shown++;
         if (shown > 20) continue;                           // показываем не больше 20 карточек
 
-        var card = document.createElement("div");
-        card.className = "card";
-        card.innerHTML =
-          '<div class="post-head"><span class="post-ch"></span><span class="post-meta"></span></div>' +
-          '<div class="post-nums"></div><div></div><p class="post-text"></p><a target="_blank">Открыть пост</a>';
-        card.querySelector(".post-ch").textContent = p.channel;
-        card.querySelector(".post-meta").textContent = p.date.split("-").reverse().join(".");
-        card.querySelector(".post-nums").textContent =
-          "Просмотры: " + p.views.toLocaleString("ru-RU") + " (" + times(p.reach || 1) + "). Реакции: " + p.reactions.toLocaleString("ru-RU") + " (" + times(p.engagement || 1) + ").";
-        card.children[2].innerHTML = '<span class="tag"></span><span class="tag"></span>';
-        card.children[2].children[0].textContent = p.theme;
-        card.children[2].children[1].textContent = p.format;
-        card.querySelector(".post-text").textContent = p.text;
-        card.querySelector("a").href = p.url;
-        box.appendChild(card);
+        box.appendChild(makeCard(p));
       }
       document.getElementById("count").textContent = shown
         ? "Нашлось: " + shown + ". Показаны первые " + Math.min(shown, 20) + ", самые сильные сверху."
         : "Таких постов в базе нет. Выберите «Все темы».";
+    }
+
+    // УРОК 10: карточка поста — отдельная функция, чтобы рисовать её в двух местах
+    function makeCard(p) {
+      var card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML =
+        '<div class="post-head"><span class="post-ch"></span><span class="post-meta"></span></div>' +
+        '<div class="post-nums"></div><div></div><p class="post-text"></p><a target="_blank">Открыть пост</a>';
+      card.querySelector(".post-ch").textContent = p.channel;
+      card.querySelector(".post-meta").textContent = p.date.split("-").reverse().join(".");
+      card.querySelector(".post-nums").textContent =
+        "Просмотры: " + p.views.toLocaleString("ru-RU") + " (" + times(p.reach || 1) + "). Реакции: " + p.reactions.toLocaleString("ru-RU") + " (" + times(p.engagement || 1) + ").";
+      card.children[2].innerHTML = '<span class="tag"></span><span class="tag"></span>';
+      card.children[2].children[0].textContent = p.theme;
+      card.children[2].children[1].textContent = p.format;
+      card.querySelector(".post-text").textContent = p.text;
+      card.querySelector("a").href = p.url;
+      return card;
+    }
+
+    // УРОК 10: разбиваем текст на «корни» слов: первые 5 букв каждого слова длиннее 4 букв
+    function roots(text) {
+      var words = text.toLowerCase().match(/[а-яёa-z]+/g) || [];
+      var set = {};
+      for (var i = 0; i < words.length; i++) {
+        if (words[i].length >= 5) { set[words[i].slice(0, 5)] = true; }
+      }
+      return set;
+    }
+
+    // УРОК 10: ищем три самых похожих удачных поста той же площадки
+    function showSimilar(text, platform) {
+      var mine = roots(text);
+      var scored = [];
+      for (var i = 0; i < POSTS.length; i++) {
+        var p = POSTS[i];
+        if (p.platform !== platform) continue;
+        var theirs = roots(p.text);
+        var common = 0, total = 0;
+        for (var r in mine) { if (theirs[r]) common++; }      // сколько общих корней
+        for (var r2 in theirs) { total++; }                   // сколько корней в чужом посте
+        // делим на корень из длины: иначе длинные посты всегда побеждают просто потому, что в них больше слов
+        if (common > 0) scored.push({ post: p, score: common / Math.sqrt(total) });
+      }
+      scored.sort(function (a, b) { return b.score - a.score; });   // самые похожие — первыми
+
+      var box = document.getElementById("similar");
+      box.innerHTML = "";
+      if (scored.length === 0) {
+        box.innerHTML = '<p class="note">Похожих постов не нашлось. Попробуйте текст подлиннее.</p>';
+        return;
+      }
+      for (var k = 0; k < scored.length && k < 3; k++) {
+        box.appendChild(makeCard(scored[k].post));
+      }
     }
 
     function check() {
@@ -293,6 +339,8 @@
         box.textContent = "🟡 " + score + "Есть что улучшить.";
         box.className = "verdict verdict-mid";
       }
+
+      showSimilar(text, platform);                 // УРОК 10
 
       // Выводим список
       var list = document.getElementById("result");
