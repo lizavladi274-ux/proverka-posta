@@ -2,37 +2,93 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-  <title>Проверка поста</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">   <!-- УРОК 8: чтобы на телефоне не было мелко -->
+  <title>Агент карьерных постов</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; }
-    textarea { width: 100%; height: 140px; font-size: 16px; box-sizing: border-box; }
-    select { font-size: 16px; padding: 8px; }
-    button { background: #E21A1A; color: white; border: 0; padding: 12px 20px; font-size: 16px; cursor: pointer; }
+    /* УРОК 8: цвета РЖД из руководства компании */
+    body { font-family: Arial, sans-serif; color: #111; background: #fff; max-width: 760px; margin: 0 auto; padding: 24px 16px 60px; }
+    .stripe { width: 64px; height: 8px; background: #E21A1A; }
+    .small { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #595959; margin: 10px 0 4px; }
+    h1 { font-size: 34px; text-transform: uppercase; margin: 0 0 8px; }
+    h2 { font-size: 20px; text-transform: uppercase; display: flex; align-items: center; gap: 10px; margin: 28px 0 12px; }
+    .num { display: inline-flex; width: 30px; height: 30px; border-radius: 50%; background: #E21A1A; color: #fff; align-items: center; justify-content: center; font-size: 16px; }
+    .lede { color: #595959; margin: 0 0 20px; }
+
+    /* вкладки */
+    .tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 2px solid #111; margin-bottom: 8px; }
+    .tab { background: none; border: 0; padding: 10px 14px; font-size: 15px; font-weight: bold; text-transform: uppercase; color: #595959; cursor: pointer; }
+    .tab.active { background: #E21A1A; color: #fff; }
+
+    /* форма */
+    textarea { width: 100%; height: 140px; font-size: 16px; padding: 10px; border: 1px solid #d9d9d9; border-radius: 4px; box-sizing: border-box; }
+    select { font-size: 16px; padding: 8px; border: 1px solid #d9d9d9; border-radius: 4px; }
     label { display: block; margin: 6px 0; }
-    li { margin: 8px 0; }
-    .good { color: green; }
+    .go { background: #E21A1A; color: white; border: 0; padding: 13px 22px; font-size: 16px; border-radius: 4px; cursor: pointer; }
+    .go:hover { background: #C4161C; }
+
+    /* результат */
+    ul#result { list-style: none; padding: 0; border: 1px solid #d9d9d9; border-radius: 4px; }
+    ul#result:empty { display: none; }
+    ul#result li { padding: 12px 14px; border-top: 1px solid #d9d9d9; margin: 0; }
+    ul#result li:first-child { border-top: 0; }
+    .good { color: #1B6B3A; }
+    .good::before { content: "ПЛЮС  "; font-weight: bold; font-size: 12px; }
     .bad { color: #B0151B; }
-    .note { color: #666; font-size: 14px; }
+    .bad::before { content: "МИНУС  "; font-weight: bold; font-size: 12px; }
+    .note { color: #595959; font-size: 13px; }
+    .verdict { padding: 14px 16px; border-radius: 6px; font-size: 18px; font-weight: bold; margin-top: 16px; }
+    .verdict-good { background: #E2F2E7; color: #1B6B3A; }
+    .verdict-mid  { background: #FBF0D6; color: #8A5A00; }
+    .verdict-bad  { background: #F9E1E1; color: #B0151B; }
+    .card { border: 1px solid #d9d9d9; border-radius: 4px; padding: 14px 16px; margin: 10px 0; }
   </style>
 </head>
 <body>
-  <h1>Проверка поста</h1>
-  <textarea id="post" placeholder="Вставьте текст поста"></textarea>
+  <div class="stripe"></div>
+  <p class="small">Учебный проект для кейса РЖД · не официальный сервис компании</p>
+  <h1>Агент карьерных постов</h1>
+  <p class="lede">Вставьте пост. Агент скажет, что в нём помогает, а что мешает, с цифрами из разбора 2 024 постов.</p>
 
-  <p>Где выйдет пост:
-    <select id="platform">
-      <option value="telegram">Telegram</option>
-      <option value="vk">ВКонтакте</option>
-    </select>
-  </p>
+  <!-- УРОК 8: вкладки. onclick вызывает showTab с именем вкладки -->
+  <nav class="tabs">
+    <button class="tab active" id="tab-check" onclick="showTab('check')">Проверить пост</button>
+    <button class="tab" id="tab-best" onclick="showTab('best')">Удачные посты</button>
+    <button class="tab" id="tab-about" onclick="showTab('about')">О проекте</button>
+  </nav>
 
-  <!-- УРОК 6: то, что программа не может понять по словам, отмечает человек -->
-  <label><input type="checkbox" id="isMeme"> Это мем или шутка</label>
-  <label><input type="checkbox" id="isStory"> Это история конкретного человека</label>
+  <!-- Вкладка 1 -->
+  <section id="panel-check">
+    <h2><span class="num">1</span>Вставьте пост</h2>
+    <textarea id="post" placeholder="Вставьте текст поста"></textarea>
+    <p>Где выйдет пост:
+      <select id="platform">
+        <option value="telegram">Telegram</option>
+        <option value="vk">ВКонтакте</option>
+      </select>
+    </p>
+    <label><input type="checkbox" id="isMeme"> Это мем или шутка</label>
+    <label><input type="checkbox" id="isStory"> Это история конкретного человека</label>
+    <p><button class="go" onclick="check()">Проверить пост</button></p>
 
-  <p><button onclick="check()">Проверить</button></p>
-  <ul id="result"></ul>
-  <p class="note">Цифры — из разбора 2 024 постов карьерных каналов за 2026 год: во сколько раз чаще или реже такие посты попадали в лучшие.</p>
+    <h2><span class="num">2</span>Что нашёл агент</h2>
+    <div id="verdict"></div>
+    <ul id="result"></ul>
+    <p class="note">Цифры показывают, во сколько раз чаще или реже такие посты попадали в лучшие в карьерных каналах в 2026 году.</p>
+  </section>
+
+  <!-- Вкладка 2: заполним в уроке 9 -->
+  <section id="panel-best" hidden>
+    <h2>Удачные посты</h2>
+    <div class="card">Здесь появятся лучшие посты из нашей базы. Это урок 9.</div>
+  </section>
+
+  <!-- Вкладка 3 -->
+  <section id="panel-about" hidden>
+    <h2>О проекте</h2>
+    <div class="card"><b>Данные.</b> 2 383 поста из 8 Telegram-каналов и 853 записи из 4 групп «ВКонтакте», январь–октябрь 2026.</div>
+    <div class="card"><b>Как считали.</b> Каждый пост сравнивали с обычными постами своего канала. Лучшие — те, что заметно обогнали обычный уровень по просмотрам или реакциям.</div>
+    <div class="card"><b>Ограничения.</b> Цифры показывают, что такие посты чаще или реже попадали в лучшие. Это не обещание результата для конкретного поста.</div>
+  </section>
 
   <script>
     // УРОК 6: правила хранятся отдельно от кода, как таблица.
@@ -103,6 +159,16 @@
       return n;
     }
 
+    // УРОК 8: переключение вкладок
+    function showTab(name) {
+      var tabs = ["check", "best", "about"];
+      for (var i = 0; i < tabs.length; i++) {
+        var t = tabs[i];
+        document.getElementById("panel-" + t).hidden = (t !== name);       // прячем все панели, кроме нужной
+        document.getElementById("tab-" + t).className = (t === name) ? "tab active" : "tab";
+      }
+    }
+
     function check() {
       var text = document.getElementById("post").value;
       var platform = document.getElementById("platform").value;
@@ -124,6 +190,24 @@
         if (answer && rule.found(text)) {
           notes.push({ text: answer.say, good: answer.good });
         }
+      }
+
+      // УРОК 7: считаем плюсы и минусы и делаем вывод
+      var plus = 0, minus = 0;
+      for (var k = 0; k < notes.length; k++) {
+        if (notes[k].good) { plus++; } else { minus++; }
+      }
+      var box = document.getElementById("verdict");
+      var score = "Плюсов: " + plus + ", минусов: " + minus + ". ";
+      if (minus === 0) {
+        box.textContent = "🟢 " + score + "Пост хороший, можно публиковать.";
+        box.className = "verdict verdict-good";
+      } else if (minus > plus) {
+        box.textContent = "🔴 " + score + "Пост лучше переделать.";
+        box.className = "verdict verdict-bad";
+      } else {
+        box.textContent = "🟡 " + score + "Есть что улучшить.";
+        box.className = "verdict verdict-mid";
       }
 
       // Выводим список
