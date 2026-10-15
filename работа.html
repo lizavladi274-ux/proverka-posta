@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Проверка поста</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; }
+    textarea { width: 100%; height: 120px; font-size: 16px; }
+    select { font-size: 16px; padding: 8px; }
+    button { background: #E21A1A; color: white; border: 0; padding: 12px 20px; font-size: 16px; }
+    .good { color: green; font-weight: bold; }
+    .bad { color: #B0151B; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Проверка поста</h1>
+  <textarea id="post" placeholder="Вставьте текст поста"></textarea>
+ 
+  <!-- Выпадающий список -->
+  <p>Где выйдет пост:
+    <select id="platform">
+      <option value="telegram">Telegram</option>
+      <option value="vk">ВКонтакте</option>
+    </select>
+  </p>
+  <button onclick="check()">Проверить</button>
+  <ul id="result"></ul>
+  <script>
+    function check() {
+      var text = document.getElementById("post").value;
+      var platform = document.getElementById("platform").value;
+      var notes = [];      // пустой список замечаний
+
+      // Замечание 1: длина текста
+      if (platform === "telegram") {
+        if (text.length <= 150) { notes.push({ text: "Короткий текст: для Telegram хорошо.", good: true }); }
+        else { notes.push({ text: "Длинный текст: для Telegram лучше сократить.", good: false }); }
+      } else {
+        if (text.length <= 150) { notes.push({ text: "Короткий текст: во ВКонтакте такие проигрывают.", good: false }); }
+        else { notes.push({ text: "Подробный текст: для ВКонтакте хорошо.", good: true }); }
+      }
+
+      // Замечание 2: призыв «откликнись»
+      if (text.toLowerCase().includes("откликн")) {
+        notes.push({ text: "Есть призыв «откликнись»: он снижает отклик.", good: false });
+      }
+
+      // Замечание 3: ссылка
+      if (text.includes("http")) {
+        notes.push({ text: "Есть ссылка: хорошо.", good: true });
+      } else {
+        notes.push({ text: "Нет ссылки: добавьте, куда человеку перейти.", good: false });
+      }
+
+      // Выводим все замечания списком
+      var list = document.getElementById("result");
+      list.innerHTML = "";                         // очищаем старый список
+      for (var i = 0; i < notes.length; i++) {    // проходим по каждому замечанию
+        var item = document.createElement("li");   // создаём пункт списка
+        item.textContent = notes[i].text;
+        item.className = notes[i].good ? "good" : "bad";
+        list.appendChild(item);                    // добавляем пункт на страницу
+      }
+    }
+  </script>
+</body>
+</html>
