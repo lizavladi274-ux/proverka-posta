@@ -4,62 +4,136 @@
   <meta charset="utf-8">
   <title>Проверка поста</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; }
-    textarea { width: 100%; height: 120px; font-size: 16px; }
+    body { font-family: Arial, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; }
+    textarea { width: 100%; height: 140px; font-size: 16px; box-sizing: border-box; }
     select { font-size: 16px; padding: 8px; }
-    button { background: #E21A1A; color: white; border: 0; padding: 12px 20px; font-size: 16px; }
-    .good { color: green; font-weight: bold; }
-    .bad { color: #B0151B; font-weight: bold; }
+    button { background: #E21A1A; color: white; border: 0; padding: 12px 20px; font-size: 16px; cursor: pointer; }
+    label { display: block; margin: 6px 0; }
+    li { margin: 8px 0; }
+    .good { color: green; }
+    .bad { color: #B0151B; }
+    .note { color: #666; font-size: 14px; }
   </style>
 </head>
 <body>
   <h1>Проверка поста</h1>
   <textarea id="post" placeholder="Вставьте текст поста"></textarea>
- 
-  <!-- Выпадающий список -->
+
   <p>Где выйдет пост:
     <select id="platform">
       <option value="telegram">Telegram</option>
       <option value="vk">ВКонтакте</option>
     </select>
   </p>
-  <button onclick="check()">Проверить</button>
+
+  <!-- УРОК 6: то, что программа не может понять по словам, отмечает человек -->
+  <label><input type="checkbox" id="isMeme"> Это мем или шутка</label>
+  <label><input type="checkbox" id="isStory"> Это история конкретного человека</label>
+
+  <p><button onclick="check()">Проверить</button></p>
   <ul id="result"></ul>
+  <p class="note">Цифры — из разбора 2 024 постов карьерных каналов за 2026 год: во сколько раз чаще или реже такие посты попадали в лучшие.</p>
+
   <script>
+    // УРОК 6: правила хранятся отдельно от кода, как таблица.
+    // У каждого правила: как его найти в посте (found) и что сказать для каждой площадки.
+    // Если для площадки ничего не сказано (null), правило там не показываем.
+    var RULES = [
+      {
+        name: "Поздравление",
+        found: function (text) { return has(text, ["поздравля", "с днём", "с днем", "с праздником"]); },
+        telegram: { good: true,  say: "Поздравление: такие посты попадают в лучшие в 3,1 раза чаще обычного." },
+        vk:       { good: true,  say: "Поздравление: такие посты попадают в лучшие в 2,2 раза чаще обычного." }
+      },
+      {
+        name: "Мем",
+        found: function (text) { return document.getElementById("isMeme").checked; },
+        telegram: { good: true,  say: "Мем или шутка: в лучшие попадают в 2,6 раза чаще обычного." },
+        vk:       { good: true,  say: "Мем или шутка: в лучшие попадают в 1,5 раза чаще обычного." }
+      },
+      {
+        name: "История человека",
+        found: function (text) { return document.getElementById("isStory").checked; },
+        telegram: { good: true,  say: "История человека: в лучшие попадают в 1,4 раза чаще обычного." },
+        vk:       { good: true,  say: "История человека: в лучшие попадают в 1,4 раза чаще обычного." }
+      },
+      {
+        name: "Список",
+        found: function (text) { return countListLines(text) >= 3; },
+        telegram: { good: false, say: "Список: в Telegram такие посты попадают в лучшие в 2,7 раза реже. Ниже среднего во всех 7 каналах. Расскажите про один пункт через человека или шутку." },
+        vk:       null
+      },
+      {
+        name: "Вакансии",
+        found: function (text) { return has(text, ["ваканси", "требуются", "ищем в команду"]); },
+        telegram: { good: false, say: "Вакансии в лоб: в Telegram попадают в лучшие в 2,3 раза реже. Вакансия в виде шутки работает лучше: 5 лучших из 10." },
+        vk:       { good: false, say: "Вакансии: во ВКонтакте попадают в лучшие в 1,3 раза реже. Добавьте условия: обучение, зарплата, льготы." }
+      },
+      {
+        name: "Откликнись",
+        found: function (text) { return has(text, ["откликн", "откликай"]); },
+        telegram: { good: false, say: "Призыв «откликнись»: в Telegram такие посты попадают в лучшие в 1,5 раза реже. У РЖД — 0 лучших из 18. Оставьте ссылку одной строкой без нажима." },
+        vk:       { good: false, say: "Призыв «откликнись»: во ВКонтакте просмотров с ним больше, но лайков и комментариев меньше." }
+      },
+      {
+        name: "Льготы",
+        found: function (text) { return has(text, ["льгот", "дмс", "санатор", "ипотек", "компенсац", "бесплатное обучение", "обучим"]); },
+        telegram: null,
+        vk:       { good: true,  say: "Условия и льготы: во ВКонтакте такие посты попадают в лучшие в 1,5 раза чаще." }
+      }
+    ];
+
+    // Есть ли в тексте хотя бы одно слово из списка
+    function has(text, words) {
+      var t = text.toLowerCase();
+      for (var i = 0; i < words.length; i++) {
+        if (t.includes(words[i])) { return true; }
+      }
+      return false;
+    }
+
+    // Сколько строк начинается как пункт списка: тире, точка, цифра или значок
+    function countListLines(text) {
+      var lines = text.split("\n");
+      var n = 0;
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (/^([-–—•*]|\d+[.)]|📌|🔹|🔸|✔|✅|▪)/.test(line)) { n++; }
+      }
+      return n;
+    }
+
     function check() {
       var text = document.getElementById("post").value;
       var platform = document.getElementById("platform").value;
-      var notes = [];      // пустой список замечаний
+      var notes = [];
 
-      // Замечание 1: длина текста
+      // Длина текста — правило, которое зависит от числа
       if (platform === "telegram") {
-        if (text.length <= 150) { notes.push({ text: "Короткий текст: для Telegram хорошо.", good: true }); }
-        else { notes.push({ text: "Длинный текст: для Telegram лучше сократить.", good: false }); }
+        if (text.length <= 150) { notes.push({ text: "Короткий текст (" + text.length + " зн.): в Telegram такие попадают в лучшие в 1,8 раза чаще.", good: true }); }
+        else { notes.push({ text: "Длинный текст (" + text.length + " зн.): в Telegram короткие посты попадают в лучшие в 1,8 раза чаще. Сократите до 150 знаков.", good: false }); }
       } else {
-        if (text.length <= 150) { notes.push({ text: "Короткий текст: во ВКонтакте такие проигрывают.", good: false }); }
-        else { notes.push({ text: "Подробный текст: для ВКонтакте хорошо.", good: true }); }
+        if (text.length <= 150) { notes.push({ text: "Короткий текст (" + text.length + " зн.): во ВКонтакте такие попадают в лучшие в 2 раза реже. Добавьте подробностей.", good: false }); }
+        else { notes.push({ text: "Подробный текст (" + text.length + " зн.): для ВКонтакте хорошо.", good: true }); }
       }
 
-      // Замечание 2: призыв «откликнись»
-      if (text.toLowerCase().includes("откликн")) {
-        notes.push({ text: "Есть призыв «откликнись»: он снижает отклик.", good: false });
+      // УРОК 6: проходим по всем правилам из таблицы
+      for (var i = 0; i < RULES.length; i++) {
+        var rule = RULES[i];
+        var answer = rule[platform];              // берём ответ для выбранной площадки
+        if (answer && rule.found(text)) {
+          notes.push({ text: answer.say, good: answer.good });
+        }
       }
 
-      // Замечание 3: ссылка
-      if (text.includes("http")) {
-        notes.push({ text: "Есть ссылка: хорошо.", good: true });
-      } else {
-        notes.push({ text: "Нет ссылки: добавьте, куда человеку перейти.", good: false });
-      }
-
-      // Выводим все замечания списком
+      // Выводим список
       var list = document.getElementById("result");
-      list.innerHTML = "";                         // очищаем старый список
-      for (var i = 0; i < notes.length; i++) {    // проходим по каждому замечанию
-        var item = document.createElement("li");   // создаём пункт списка
-        item.textContent = notes[i].text;
-        item.className = notes[i].good ? "good" : "bad";
-        list.appendChild(item);                    // добавляем пункт на страницу
+      list.innerHTML = "";
+      for (var j = 0; j < notes.length; j++) {
+        var item = document.createElement("li");
+        item.textContent = notes[j].text;
+        item.className = notes[j].good ? "good" : "bad";
+        list.appendChild(item);
       }
     }
   </script>
