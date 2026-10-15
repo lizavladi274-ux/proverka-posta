@@ -41,6 +41,15 @@
     .verdict-mid  { background: #FBF0D6; color: #8A5A00; }
     .verdict-bad  { background: #F9E1E1; color: #B0151B; }
     .card { border: 1px solid #d9d9d9; border-radius: 4px; padding: 14px 16px; margin: 10px 0; }
+    /* УРОК 9: карточки постов и фильтры */
+    .filters { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
+    .post-head { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+    .post-ch { font-weight: bold; }
+    .post-meta { color: #595959; font-size: 13px; }
+    .post-nums { font-size: 14px; margin: 6px 0; }
+    .post-text { font-size: 14px; margin: 6px 0; }
+    .tag { display: inline-block; font-size: 12px; border: 1px solid #d9d9d9; border-radius: 3px; padding: 2px 6px; margin-right: 4px; color: #595959; }
+    a { color: #C4161C; }
   </style>
 </head>
 <body>
@@ -79,7 +88,22 @@
   <!-- Вкладка 2: заполним в уроке 9 -->
   <section id="panel-best" hidden>
     <h2>Удачные посты</h2>
-    <div class="card">Здесь появятся лучшие посты из нашей базы. Это урок 9.</div>
+    <!-- УРОК 9: фильтры -->
+    <div class="filters">
+      <select id="f-platform" onchange="showPosts()">
+        <option value="telegram">Telegram</option>
+        <option value="vk">ВКонтакте</option>
+      </select>
+      <select id="f-theme" onchange="showPosts()">
+        <option value="">Все темы</option>
+      </select>
+      <select id="f-who" onchange="showPosts()">
+        <option value="others">Другие компании</option>
+        <option value="rzd">РЖД</option>
+      </select>
+    </div>
+    <p class="note" id="count"></p>
+    <div id="posts"></div>
   </section>
 
   <!-- Вкладка 3 -->
@@ -90,6 +114,7 @@
     <div class="card"><b>Ограничения.</b> Цифры показывают, что такие посты чаще или реже попадали в лучшие. Это не обещание результата для конкретного поста.</div>
   </section>
 
+  <script src="posts.js"></script>   <!-- УРОК 9: подключаем файл с базой постов -->
   <script>
     // УРОК 6: правила хранятся отдельно от кода, как таблица.
     // У каждого правила: как его найти в посте (found) и что сказать для каждой площадки.
@@ -169,6 +194,65 @@
       }
     }
 
+    // УРОК 9: «во сколько раз» простыми словами
+    function times(x) {
+      if (x >= 1.15) return "в " + x.toFixed(1).replace(".", ",") + " раза больше обычного";
+      if (x <= 0.87) return "в " + (1 / x).toFixed(1).replace(".", ",") + " раза меньше обычного";
+      return "как обычно";
+    }
+
+    // УРОК 9: заполняем список тем из самой базы
+    function fillThemes() {
+      var seen = {};
+      var select = document.getElementById("f-theme");
+      for (var i = 0; i < POSTS.length; i++) {
+        var t = POSTS[i].theme;
+        if (!seen[t]) {
+          seen[t] = true;
+          var opt = document.createElement("option");
+          opt.value = t; opt.textContent = t;
+          select.appendChild(opt);
+        }
+      }
+    }
+
+    // УРОК 9: показываем карточки постов, которые подходят под фильтры
+    function showPosts() {
+      var platform = document.getElementById("f-platform").value;
+      var theme = document.getElementById("f-theme").value;
+      var who = document.getElementById("f-who").value;
+      var box = document.getElementById("posts");
+      box.innerHTML = "";
+      var shown = 0;
+      for (var i = 0; i < POSTS.length; i++) {
+        var p = POSTS[i];
+        if (p.platform !== platform) continue;              // continue = «пропусти этот пост»
+        if (theme && p.theme !== theme) continue;
+        if ((who === "rzd") !== p.rzd) continue;
+        shown++;
+        if (shown > 20) continue;                           // показываем не больше 20 карточек
+
+        var card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML =
+          '<div class="post-head"><span class="post-ch"></span><span class="post-meta"></span></div>' +
+          '<div class="post-nums"></div><div></div><p class="post-text"></p><a target="_blank">Открыть пост</a>';
+        card.querySelector(".post-ch").textContent = p.channel;
+        card.querySelector(".post-meta").textContent = p.date.split("-").reverse().join(".");
+        card.querySelector(".post-nums").textContent =
+          "Просмотры: " + p.views.toLocaleString("ru-RU") + " (" + times(p.reach || 1) + "). Реакции: " + p.reactions.toLocaleString("ru-RU") + " (" + times(p.engagement || 1) + ").";
+        card.children[2].innerHTML = '<span class="tag"></span><span class="tag"></span>';
+        card.children[2].children[0].textContent = p.theme;
+        card.children[2].children[1].textContent = p.format;
+        card.querySelector(".post-text").textContent = p.text;
+        card.querySelector("a").href = p.url;
+        box.appendChild(card);
+      }
+      document.getElementById("count").textContent = shown
+        ? "Нашлось: " + shown + ". Показаны первые " + Math.min(shown, 20) + ", самые сильные сверху."
+        : "Таких постов в базе нет. Выберите «Все темы».";
+    }
+
     function check() {
       var text = document.getElementById("post").value;
       var platform = document.getElementById("platform").value;
@@ -220,6 +304,10 @@
         list.appendChild(item);
       }
     }
+
+    // УРОК 9: при открытии страницы сразу готовим вкладку «Удачные посты»
+    fillThemes();
+    showPosts();
   </script>
 </body>
 </html>
